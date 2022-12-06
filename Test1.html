@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      * {
+        margin: 0;
+      }
+      body {
+        background-color: black;
+        overflow: hidden;
+      }
+      #loaderbox {
+        width: 150px;
+        height: 150px;
+        position: absolute;
+        top: 100px;
+        left: 180px;
+        transform: translate(-50%, 50%);
+      }
+      .loader {
+        width: calc(100% - 16px);
+        height: calc(100% - 16px);
+        border: 8px solid #162534;
+        border-top: 8px solid crimson;
+        box-shadow: 0 0 10px black;
+        border-radius: 50%;
+        animation: spin 2s linear infinite;
+      }
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      button {
+        width: 80px;
+        height: 35px;
+        border: none;
+        color: white;
+        font-weight: bold;
+        font-size: 18px;
+        border-radius: 5px;
+        background-color: #00ff88;
+        box-shadow: 0 4px #000;
+        text-shadow: 0 0 2px #a12;
+        opacity: 1;
+      }
+      button:focus {
+        outline: none;
+        box-shadow: 0 0 0 #000;
+      }
+    </style>
+    <meta
+      name="viewport"
+      charset="UTF-8"
+      content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/addons/p5.dom.min.js"></script>
+    <title>Page Title</title>
+  </head>
+  <body
+    onselectstart="return false"
+    onpaste="return false;"
+    onCopy="return false"
+    onCut="return false"
+    onDrag="return false"
+    onDrop="return false"
+    oncontextmenu="return false"
+  >
+    <div id="loaderbox">
+      <div class="loader">
+        <div class="loader">
+          <div class="loader">
+            <div class="loader">
+              <div class="loader"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      var bow;
+      var land;
+      var score = 0;
+      var birds = [];
+      var arrowCoords = [];
+      var showDragging = false;
+      var arrowIsReleased = false;
+      var playerOneTurn = true;
+      var target = [];
+      var game_over = false;
+      var restart_btn;
+      var free = false;
+      var lifes = [];
+      var ready = true;
+      var bird_img, birds_img, back_img, bow_img;
+      var point = "";
+      var level = 1;
+      var f = 0;
+
+      function preload() {
+        bird_img = loadImage(
+          "https://i.ibb.co/18y5X95/kisspng-pink-smiley-clip-art-angry-bird-5ab0529bb1ff69-0492551915215049237291.png"
+        );
+        birds_img = loadImage(
+          "https://i.ibb.co/br58HBw/kisspng-birdcage-domestic-canary-birdcage-5ae4435816e435-2184703215249088880938.png"
+        );
+        back_img = loadImage(
+          "https://i.ibb.co/DWWwFSb/wallpaper2you-226436.jpg"
+        );
+
+        bow_img = loadImage(
+          "https://i.ibb.co/HD7xmJn/584c68cc6e7d5809d2fa635c.png"
+        );
+      }
+
+      function setup() {
+        var loader = select("#loaderbox");
+        loader.hide();
+        createCanvas(windowWidth, windowHeight).position(0, 0);
+        background(0);
+        colorMode(HSB);
+
+        restart_btn = createButton("Restart")
+          .position(width / 2 - 50, height / 2)
+          .mouseClicked(rest)
+          .hide();
+
+        bow = new Bow(width / 2, height - 140);
+        land = new Land();
+        for (let i = 0; i < level; i++) {
+          target.push(new Target());
+          lifes.push(new Life(i * 30 + 5, height - 140));
+        }
+      }
+
+      function draw() {
+        background("lightblue");
+        image(back_img, 0, 0, width, height - 100);
+        if (!game_over) {
+          for (let l of lifes) {
+            l.show();
+          }
+          bow.show();
+
+          for (let t of target) {
+            t.show();
+          }
+          textAlign(CENTER);
+          textSize(30);
+          fill("pink");
+          stroke("green");
+          strokeWeight(3);
+          text("Score : " + score, 80, 40);
+          text("Level : " + level, width - 80, 40);
+          land.show();
+          if (showDragging && arrowCoords.length === 2) {
+            stroke(255, 255, 255, 100);
+            strokeWeight(1);
+            fill(0, 200, 100, 0.6);
+            image(
+              bird_img,
+              arrowCoords[1].x - 15,
+              arrowCoords[1].y - 20,
+              30,
+              30
+            );
+            stroke("#332929");
+            strokeWeight(4);
+            line(
+              bow.x - 30,
+              bow.y - 35,
+              arrowCoords[1].x || bow.x,
+              arrowCoords[1].y || bow.y - 5
+            );
+            line(
+              bow.x + 30,
+              bow.y - 35,
+              arrowCoords[1].x || bow.x,
+              arrowCoords[1].y || bow.y - 5
+            );
+          }
+
+          let gravity = createVector(0, 0.2);
+
+          if (birds.length > 10) {
+            birds.splice(0, 1);
+          }
+          if (arrowIsReleased) {
+            for (var i = 0; i < birds.length; i++) {
+              let bird = birds[i];
+              bird.applyForce(gravity);
+              bird.update();
+              bird.edges(land);
+              bird.show();
+            }
+          }
+        }
+        for (var i = 0; i < target.length; i++) {
+          for (var j = 0; j < birds.length; j++) {
+            if (
+              dist(birds[j].pos.x, birds[j].pos.y, target[i].x, target[i].y) <
+              target[i].r * 2
+            ) {
+              score += 10;
+              birds.splice(j, 1);
+              target[i].free = true;
+              free = true;
+              f = i;
+            }
+          }
+        }
+        for (var i = 0; i < birds.length; i++) {
+          if (birds[i].pos.y > height - land.h - 20) {
+            lifes.splice(lifes.length - 1, 1);
+            birds.splice(i, 1);
+            ready = true;
+          }
+        }
+        if (free) {
+          if (target[f].free) {
+            target[f].y += 10;
+            if (target[f].y > height) {
+              target.splice(f, 1);
+              lifes.splice(lifes.length - 1, 1);
+              ready = true;
+              free = false;
+            }
+          }
+        }
+        if (target.length == 0) {
+          level += 1;
+          restart(score, level);
+        }
+
+        if ((lifes.length == 0 && target.length != 0) || level > 10) {
+          ready = false;
+          background("lightblue");
+          image(back_img, 0, 0, width, height - 100);
+          land.show();
+          fill(150);
+          rect(0, height, width, 100);
+          strokeWeight(5);
+          fill(255);
+          stroke("crimson");
+          textAlign(CENTER);
+          textSize(30);
+          if (level > 10) {
+            level = 10;
+            text("You Win !", width / 2, height / 2 - 120);
+          } else {
+            text("Game Over !", width / 2, height / 2 - 120);
+          }
+          textSize(25);
+          text("Score : " + score, width / 2, height / 2 - 80);
+          text("Level : " + level, width / 2, height / 2 - 40);
+          frameRate(0);
+          restart_btn.show();
+        }
+      }
+
+      function Bird(coords, bow, land) {
+        this.r = 30;
+        this.bow = bow;
+        this.land = land;
+        this.pos = createVector(this.bow.x, this.bow.y - 60);
+        this.acc = createVector();
+        this.vel = createVector();
+        try {
+          this.mag =
+            coords.length === 2
+              ? dist(coords[0].x, coords[0].y, coords[1].x, coords[1].y)
+              : 1;
+        } catch (err) {}
+        this.landed = false;
+        this.show = function () {
+          push();
+          translate(this.pos.x, this.pos.y);
+          rotate(this.vel.heading());
+          imageMode(CENTER);
+          image(bird_img, 0, 0, this.r, this.r);
+          pop();
+        };
+
+        this.update = function () {
+          if (!this.landed) {
+            this.vel.add(this.acc);
+            this.pos.add(this.vel);
+            this.acc.mult(0);
+          }
+        };
+
+        this.shoot = function (f) {
+          f.mult(this.mag);
+          f.limit(12);
+          this.applyForce(f);
+        };
+
+        this.edges = function (land) {
+          if (this.pos.y > height - land.h - this.r / 2) {
+            this.landed = true;
+          }
+        };
+
+        this.applyForce = function (f) {
+          this.acc.add(f);
+        };
+      }
+
+      function mousePressed() {
+        try {
+          if (ready) {
+            if (
+              mouseY < height - 150 &&
+              mouseY > height - 300 &&
+              mouseX < width / 2 + 40 &&
+              mouseX > width / 2 - 40
+            ) {
+              showDragging = true;
+              arrowCoords[0] = {
+                x: bow.x,
+                y: bow.y,
+              };
+            }
+          }
+        } catch (e) {}
+      }
+
+      function mouseDragged() {
+        try {
+          if (ready) {
+            arrowCoords[1] = {
+              x: mouseX,
+              y: mouseY,
+            };
+          }
+        } catch (e) {}
+      }
+
+      function mouseReleased() {
+        try {
+          if (ready) {
+            if (arrowCoords[0].y < height - 100) {
+              let bird = new Bird(arrowCoords, bow, land);
+              let angle =
+                arrowCoords.length === 2
+                  ? angleFromTwoPoints(arrowCoords[0], arrowCoords[1])
+                  : 0;
+              let vFromAngle = p5.Vector.fromAngle(angle);
+              bird.shoot(vFromAngle);
+              birds.push(bird);
+              showDragging = false;
+            }
+            arrowIsReleased = true;
+            arrowCoords = [];
+            ready = false;
+          }
+        } catch (err) {}
+      }
+
+      function angleFromTwoPoints(p1, p2) {
+        return atan2(p1.y - p2.y, p1.x - p2.x);
+      }
+
+      function Target(x, y) {
+        this.x = random(20, width - 20);
+        this.y = random(180, 320);
+        this.r = 30;
+        this.free = false;
+        this.show = function () {
+          image(
+            birds_img,
+            this.x - this.r * 1.5,
+            this.y - this.r * 2,
+            this.r * 3,
+            this.r * 4
+          );
+          if (!this.free) {
+            strokeWeight(4);
+            stroke("darkgray");
+            line(this.x - 6, 0, this.x - 6, this.y - this.r * 2);
+          }
+        };
+      }
+      function Bow(x, y) {
+        this.x = x;
+        this.y = y;
+        this.left = false;
+        this.right = false;
+        this.show = function () {
+          image(bow_img, this.x - 40, this.y - 50, 80, 100);
+        };
+      }
+      function Life(x, y) {
+        this.x = x;
+        this.y = y;
+        this.w = 30;
+        this.h = 30;
+        this.show = function () {
+          image(bird_img, this.x, this.y, this.w, this.h);
+        };
+      }
+
+      function Land() {
+        this.x = 0;
+        this.y = height - 100;
+        this.w = width;
+        this.h = 100;
+        this.show = function () {
+          fill("green");
+          noStroke();
+          rect(this.x, this.y, this.w, this.h);
+        };
+      }
+      function rest() {
+        restart(0, 1);
+      }
+      function restart(s, l) {
+        frameRate(200);
+        restart_btn.hide();
+        ready = true;
+        score = s;
+        level = l;
+        lifes = [];
+        target = [];
+        bow = new Bow(width / 2, height - 140);
+        land = new Land();
+        for (let i = 0; i < level; i++) {
+          target.push(new Target());
+          lifes.push(new Life(i * 30 + 5, height - 140));
+        }
+      }
+    </script>
+  </body>
+</html>
